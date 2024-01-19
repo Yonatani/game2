@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,75 +8,153 @@ datasource db {
 }
 
 model User {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  username String  @unique
-  name     String?
+  id            String         @id @default(cuid())
+  email         String         @unique
+  username      String         @unique
+  name          String?
+  popularity    Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  connections   Connection[]
+  password      Password?
+  reports       Report[]
+  sessions      Session[]
+  tickets       Ticket[]
+  gameRoles     UserGameRole[]
+  image         UserImage?
+  roles         UserRole[]
+  videos        Video[]
+  videoComments VideoComment[]
+  notes         Note[]
+  NoteComment   NoteComment[]
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model UserRole {
+  id          String                 @id @default(cuid())
+  roleId      String
+  userId      String
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        Role                   @relation(fields: [roleId], references: [id])
+  permissions PermissionToUserRole[]
+}
 
-  image       UserImage?
-  password    Password?
-  notes       Note[]
-  roles       Role[]
-  sessions    Session[]
-  connections Connection[]
+model UserGameRole {
+  id     String @id @default(cuid())
+  type   String
+  power  Int    @default(0)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+}
+
+model Permission {
+  id          String                 @id @default(cuid())
+  action      String
+  entity      String
+  access      String
+  description String                 @default("")
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  roles       PermissionToUserRole[]
+
+  @@unique([action, entity, access])
+}
+
+model PermissionToUserRole {
+  permissionId String
+  userRoleId   String
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  userRole     UserRole   @relation(fields: [userRoleId], references: [id])
+
+  @@id([permissionId, userRoleId])
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  description String     @default("")
+  roles       UserRole[]
 }
 
 model Note {
-  id      String @id @default(cuid())
-  title   String
-  content String
+  id        String        @id @default(cuid())
+  title     String
+  content   String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  ownerId   String
+  comments  NoteComment[]
+  owner     User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  images    NoteImage[]
+  reports   Report[]
+  tickets   Ticket[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  ownerId String
-
-  images NoteImage[]
-
-  // non-unique foreign key
   @@index([ownerId])
-  // This helps our order by in the user search a LOT
   @@index([ownerId, updatedAt])
 }
 
+model Video {
+  id           String         @id @default(cuid())
+  title        String
+  description  String?
+  videoLink    String // Link to the video
+  thumbnail    String? // Optional link to a thumbnail or preview image
+  contentType  String // Video format or MIME type
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  ownerId      String
+  owner        User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  comments     VideoComment[]
+  reports      Report[]
+  tickets      Ticket[]
+  totalTickets Int            @default(0)
+}
+
+model NoteComment {
+  id      String @id @default(cuid())
+  userId  String
+  noteId  String
+  content String
+  note    Note   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id])
+}
+
+model VideoComment {
+  id      String @id @default(cuid())
+  userId  String
+  videoId String
+  content String
+  video   Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user    User   @relation(fields: [userId], references: [id])
+}
+
 model NoteImage {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   altText     String?
   contentType String
   blob        Bytes
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  noteId      String
+  note        Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  noteId String
-
-  // non-unique foreign key
   @@index([noteId])
 }
 
 model UserImage {
-  id          String  @id @default(cuid())
+  id          String   @id @default(cuid())
   altText     String?
   contentType String
   blob        Bytes
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId String @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Password {
-  hash String
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  hash   String
   userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
@@ -94,33 +169,6 @@ model Session {
 
   // non-unique foreign key
   @@index([userId])
-}
-
-model Permission {
-  id          String @id @default(cuid())
-  action      String // e.g. create, read, update, delete
-  entity      String // e.g. note, user, etc.
-  access      String // e.g. own or any
-  description String @default("")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  roles Role[]
-
-  @@unique([action, entity, access])
-}
-
-model Role {
-  id          String @id @default(cuid())
-  name        String @unique
-  description String @default("")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  users       User[]
-  permissions Permission[]
 }
 
 model Verification {
@@ -166,4 +214,35 @@ model Connection {
   userId String
 
   @@unique([providerName, providerId])
+}
+
+model Report {
+  id      String  @id @default(cuid())
+  videoId String?
+  userId  String
+  reason  String
+  video   Video?  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Note    Note?   @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId  String?
+}
+
+model Ticket {
+  id          String       @id @default(cuid())
+  videoId     String?
+  userId      String
+  totalPower  Int
+  video       Video?       @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleTickets RoleTicket[]
+  Note        Note?        @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  noteId      String?
+}
+
+model RoleTicket {
+  id       String @id @default(cuid())
+  ticketId String
+  roleType String // e.g., "Artist", "Critic", etc.
+  power    Int
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 }

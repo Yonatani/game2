@@ -33,7 +33,6 @@ import { GeneralErrorBoundary } from './components/error-boundary.tsx'
 import { ErrorList } from './components/forms.tsx'
 import { EpicProgress } from './components/progress-bar.tsx'
 import { SearchBar } from './components/search-bar.tsx'
-import { useToast } from './components/toaster.tsx'
 import { Button } from './components/ui/button.tsx'
 import {
 	DropdownMenu,
@@ -102,27 +101,42 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const user = userId
 		? await time(
-				() =>
-					prisma.user.findUniqueOrThrow({
-						select: {
-							id: true,
-							name: true,
-							username: true,
-							image: { select: { id: true } },
-							roles: {
-								select: {
-									name: true,
-									permissions: {
-										select: { entity: true, action: true, access: true },
-									},
-								},
-							},
+			async () => {
+				return await prisma.user.findUnique({
+					where: { id: userId },
+					select: {
+						id: true,
+						name: true,
+						username: true,
+						image: {
+							select: {
+								id: true
+							}
 						},
-						where: { id: userId },
-					}),
-				{ timings, type: 'find user', desc: 'find user in root' },
-			)
-		: null
+						gameRoles: {
+							select: {
+								type: true,
+								power: true
+							}
+						},
+						roles: {
+							select: {
+								id: true,
+								permissions: true,
+								role: true
+							}
+						}
+					}
+				})
+
+
+
+			},
+			{ timings, type: 'find user', desc: 'find user in root' }
+		)
+		: null;
+
+
 	if (userId && !user) {
 		console.info('something weird happened')
 		// something weird happened... The user is authenticated but we can't find
@@ -130,12 +144,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		await logout({ request, redirectTo: '/' })
 	}
 	const { toast, headers: toastHeaders } = await getToast(request)
+
+	const convertgameRolesToObject = () => {
+		if(user?.gameRoles.length === 0) return ({})
+
+		const gameRoles: Record<string, any> = {}
+		for (const gameRole of user?.gameRoles || []) {
+			const {type, ...rest} = gameRole
+			gameRoles[type] = rest
+		}
+
+		return gameRoles
+	}
 	const honeyProps = honeypot.getInputProps()
 	const [csrfToken, csrfCookieHeader] = await csrf.commitToken()
 
 	return json(
 		{
-			user,
+			user: {...user, gameRoles: user ? convertgameRolesToObject() : {}},
 			requestInfo: {
 				hints: getHints(request),
 				origin: getDomainUrl(request),
@@ -190,11 +216,11 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 function Document({
-	children,
-	nonce,
-	theme = 'light',
-	env = {},
-}: {
+					  children,
+					  nonce,
+					  theme = 'light',
+					  env = {},
+				  }: {
 	children: React.ReactNode
 	nonce: string
 	theme?: Theme
@@ -202,25 +228,25 @@ function Document({
 }) {
 	return (
 		<html lang="en" className={`${theme} h-full overflow-x-hidden`}>
-			<head>
-				<ClientHintCheck nonce={nonce} />
-				<Meta />
-				<meta charSet="utf-8" />
-				<meta name="viewport" content="width=device-width,initial-scale=1" />
-				<Links />
-			</head>
-			<body className="bg-background text-foreground">
-				{children}
-				<script
-					nonce={nonce}
-					dangerouslySetInnerHTML={{
-						__html: `window.ENV = ${JSON.stringify(env)}`,
-					}}
-				/>
-				<ScrollRestoration nonce={nonce} />
-				<Scripts nonce={nonce} />
-				<LiveReload nonce={nonce} />
-			</body>
+		<head>
+			<ClientHintCheck nonce={nonce} />
+			<Meta />
+			<meta charSet="utf-8" />
+			<meta name="viewport" content="width=device-width,initial-scale=1" />
+			<Links />
+		</head>
+		<body className="bg-background text-foreground">
+		{children}
+		<script
+			nonce={nonce}
+			dangerouslySetInnerHTML={{
+				__html: `window.ENV = ${JSON.stringify(env)}`,
+			}}
+		/>
+		<ScrollRestoration nonce={nonce} />
+		<Scripts nonce={nonce} />
+		<LiveReload nonce={nonce} />
+		</body>
 		</html>
 	)
 }
@@ -233,27 +259,31 @@ function App() {
 	const matches = useMatches()
 	const isOnSearchPage = matches.find(m => m.id === 'routes/users+/index')
 	const searchBar = isOnSearchPage ? null : <SearchBar status="idle" />
-	useToast(data.toast)
 
 	return (
 		<Document nonce={nonce} theme={theme} env={data.ENV}>
 			<div className="flex h-screen flex-col justify-between">
 				<header className="container py-6">
-					<nav className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
-						<Logo />
-						<div className="ml-auto hidden max-w-sm flex-1 sm:block">
-							{searchBar}
+					<nav>
+						<div className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
+							<Link to="/">
+								<div className="font-light">epic</div>
+								<div className="font-bold">notes</div>
+							</Link>
+							<div className="ml-auto hidden max-w-sm flex-1 sm:block">
+								{searchBar}
+							</div>
+							<div className="flex items-center gap-10">
+								{user ? (
+									<UserDropdown />
+								) : (
+									<Button asChild variant="default" size="sm">
+										<Link to="/login">Log In</Link>
+									</Button>
+								)}
+							</div>
+							<div className="block w-full sm:hidden">{searchBar}</div>
 						</div>
-						<div className="flex items-center gap-10">
-							{user ? (
-								<UserDropdown />
-							) : (
-								<Button asChild variant="default" size="lg">
-									<Link to="/login">Log In</Link>
-								</Button>
-							)}
-						</div>
-						<div className="block w-full sm:hidden">{searchBar}</div>
 					</nav>
 				</header>
 
@@ -262,26 +292,16 @@ function App() {
 				</div>
 
 				<div className="container flex justify-between pb-5">
-					<Logo />
+					<Link to="/">
+						<div className="font-light">epic</div>
+						<div className="font-bold">notes</div>
+					</Link>
 					<ThemeSwitch userPreference={data.requestInfo.userPrefs.theme} />
 				</div>
 			</div>
 			<EpicToaster closeButton position="top-center" theme={theme} />
 			<EpicProgress />
 		</Document>
-	)
-}
-
-function Logo() {
-	return (
-		<Link to="/" className="group grid leading-snug">
-			<span className="font-light transition group-hover:-translate-x-1	">
-				epic
-			</span>
-			<span className="font-bold transition group-hover:translate-x-1	">
-				notes
-			</span>
-		</Link>
 	)
 }
 
