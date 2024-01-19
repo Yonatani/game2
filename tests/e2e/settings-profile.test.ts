@@ -1,11 +1,8 @@
-import { invariant } from '@epic-web/invariant'
 import { faker } from '@faker-js/faker'
 import { verifyUserPassword } from '#app/utils/auth.server.ts'
-import { prisma } from '#app/utils/db.server.ts'
-import { readEmail } from '#tests/mocks/utils.ts'
-import { expect, test, createUser, waitFor } from '#tests/playwright-utils.ts'
+import { expect, test, createUser } from '#tests/playwright-utils.ts'
 
-const CODE_REGEX = /Here's your verification code: (?<code>[\d\w]+)/
+// const CODE_REGEX = /Here's your verification code: (?<code>[\d\w]+)/
 
 test('Users can update their basic info', async ({ page, login }) => {
 	await login()

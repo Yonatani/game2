@@ -242,10 +242,10 @@ const createRoles = async () => {
 	return roleIds;
 }
 
-const createUserImages = async () => {
-	const userImages =  await getUserImages()
-	return userImages;
-}
+// const createUserImages = async () => {
+// 	const userImages =  await getUserImages()
+// 	return userImages;
+// }
 
 async function main(): Promise<void> {
 	try {
@@ -261,7 +261,7 @@ async function main(): Promise<void> {
 	console.log('User roles were created! (admin, editor, user)');
 
 	// Creating mock users
-	const userImages =  await getUserImages()
+	//const userImages =  await getUserImages()
 	const totalUsers = 10;
 	for (let index = 0; index < totalUsers; index++) {
 		await createRandomUser(index, roleIds);
