@@ -144,6 +144,18 @@ export async function signup({
 							},
 						},
 					},
+					gameRoles: {
+						create: [
+							{
+								type: 'artist',
+								power: 0,
+							},
+							{
+								type: 'critic',
+								power: 0,
+							},
+						],
+					},
 				},
 			},
 		},

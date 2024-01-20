@@ -1,4 +1,5 @@
 import { type MetaFunction } from '@remix-run/node'
+import { Link } from '@remix-run/react'
 import {
 	Tooltip,
 	TooltipContent,
@@ -66,6 +67,18 @@ export default function Index() {
 							Getting Started guide
 						</a>{' '}
 						file for how to get your project off the ground!!
+						<Link
+							to={`/all-users`}
+							className="mt-4 text-blue-500 hover:underline"
+						>
+							All Users
+						</Link>
+						<Link
+							to={`/all-videos`}
+							className="mt-4 text-blue-500 hover:underline"
+						>
+							All Videos
+						</Link>
 					</p>
 				</div>
 				<ul className="mt-16 flex max-w-3xl flex-wrap justify-center gap-2 sm:gap-4 xl:mt-0 xl:grid xl:grid-flow-col xl:grid-cols-5 xl:grid-rows-6">

@@ -28,3 +28,6 @@ export type IconName =
 	| 'sun'
 	| 'trash'
 	| 'update'
+	| 'magic-wand'
+	| 'eye-open'
+	| 'question-mark'
