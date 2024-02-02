@@ -10,7 +10,6 @@ import {
 	type MetaFunction,
 } from '@remix-run/node'
 import {
-	Form,
 	Link,
 	Links,
 	LiveReload,
@@ -21,26 +20,16 @@ import {
 	useFetcher,
 	useFetchers,
 	useLoaderData,
-	useMatches,
-	useSubmit,
 } from '@remix-run/react'
 import { withSentry } from '@sentry/remix'
-import { useRef } from 'react'
+import React from 'react'
 import { AuthenticityTokenProvider } from 'remix-utils/csrf/react'
 import { HoneypotProvider } from 'remix-utils/honeypot/react'
 import { z } from 'zod'
+import MenuBar from '#app/components/MenuBar/MenuBar.tsx'
 import { GeneralErrorBoundary } from './components/error-boundary.tsx'
 import { ErrorList } from './components/forms.tsx'
 import { EpicProgress } from './components/progress-bar.tsx'
-import { SearchBar } from './components/search-bar.tsx'
-import { Button } from './components/ui/button.tsx'
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuTrigger,
-} from './components/ui/dropdown-menu.tsx'
 import { Icon, href as iconsHref } from './components/ui/icon.tsx'
 import { EpicToaster } from './components/ui/sonner.tsx'
 import tailwindStyleSheetUrl from './styles/tailwind.css'
@@ -50,13 +39,12 @@ import { csrf } from './utils/csrf.server.ts'
 import { prisma } from './utils/db.server.ts'
 import { getEnv } from './utils/env.server.ts'
 import { honeypot } from './utils/honeypot.server.ts'
-import { combineHeaders, getDomainUrl, getUserImgSrc } from './utils/misc.tsx'
+import { combineHeaders, getDomainUrl } from './utils/misc.tsx'
 import { useNonce } from './utils/nonce-provider.ts'
 import { useRequestInfo } from './utils/request-info.ts'
 import { type Theme, setTheme, getTheme } from './utils/theme.server.ts'
 import { makeTimings, time } from './utils/timing.server.ts'
 import { getToast } from './utils/toast.server.ts'
-import { useOptionalUser, useUser } from './utils/user.ts'
 
 export const links: LinksFunction = () => {
 	return [
@@ -101,41 +89,37 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const user = userId
 		? await time(
-			async () => {
-				return await prisma.user.findUnique({
-					where: { id: userId },
-					select: {
-						id: true,
-						name: true,
-						username: true,
-						image: {
-							select: {
-								id: true
-							}
+				async () => {
+					return await prisma.user.findUnique({
+						where: { id: userId },
+						select: {
+							id: true,
+							name: true,
+							username: true,
+							image: {
+								select: {
+									id: true,
+								},
+							},
+							gameRoles: {
+								select: {
+									type: true,
+									power: true,
+								},
+							},
+							roles: {
+								select: {
+									id: true,
+									permissions: true,
+									role: true,
+								},
+							},
 						},
-						gameRoles: {
-							select: {
-								type: true,
-								power: true
-							}
-						},
-						roles: {
-							select: {
-								id: true,
-								permissions: true,
-								role: true
-							}
-						}
-					}
-				})
-
-
-
-			},
-			{ timings, type: 'find user', desc: 'find user in root' }
-		)
-		: null;
-
+					})
+				},
+				{ timings, type: 'find user', desc: 'find user in root' },
+			)
+		: null
 
 	if (userId && !user) {
 		console.info('something weird happened')
@@ -146,11 +130,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const { toast, headers: toastHeaders } = await getToast(request)
 
 	const convertgameRolesToObject = () => {
-		if(user?.gameRoles.length === 0) return ({})
+		if (user?.gameRoles.length === 0) return {}
 
 		const gameRoles: Record<string, any> = {}
 		for (const gameRole of user?.gameRoles || []) {
-			const {type, ...rest} = gameRole
+			const { type, ...rest } = gameRole
 			gameRoles[type] = rest
 		}
 
@@ -161,7 +145,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	return json(
 		{
-			user: {...user, gameRoles: user ? convertgameRolesToObject() : {}},
+			user: { ...user, gameRoles: user ? convertgameRolesToObject() : {} },
 			requestInfo: {
 				hints: getHints(request),
 				origin: getDomainUrl(request),
@@ -216,11 +200,11 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 function Document({
-					  children,
-					  nonce,
-					  theme = 'light',
-					  env = {},
-				  }: {
+	children,
+	nonce,
+	theme = 'light',
+	env = {},
+}: {
 	children: React.ReactNode
 	nonce: string
 	theme?: Theme
@@ -228,25 +212,25 @@ function Document({
 }) {
 	return (
 		<html lang="en" className={`${theme} h-full overflow-x-hidden`}>
-		<head>
-			<ClientHintCheck nonce={nonce} />
-			<Meta />
-			<meta charSet="utf-8" />
-			<meta name="viewport" content="width=device-width,initial-scale=1" />
-			<Links />
-		</head>
-		<body className="bg-background text-foreground">
-		{children}
-		<script
-			nonce={nonce}
-			dangerouslySetInnerHTML={{
-				__html: `window.ENV = ${JSON.stringify(env)}`,
-			}}
-		/>
-		<ScrollRestoration nonce={nonce} />
-		<Scripts nonce={nonce} />
-		<LiveReload nonce={nonce} />
-		</body>
+			<head>
+				<ClientHintCheck nonce={nonce} />
+				<Meta />
+				<meta charSet="utf-8" />
+				<meta name="viewport" content="width=device-width,initial-scale=1" />
+				<Links />
+			</head>
+			<body className="bg-background text-foreground">
+				{children}
+				<script
+					nonce={nonce}
+					dangerouslySetInnerHTML={{
+						__html: `window.ENV = ${JSON.stringify(env)}`,
+					}}
+				/>
+				<ScrollRestoration nonce={nonce} />
+				<Scripts nonce={nonce} />
+				<LiveReload nonce={nonce} />
+			</body>
 		</html>
 	)
 }
@@ -254,37 +238,14 @@ function Document({
 function App() {
 	const data = useLoaderData<typeof loader>()
 	const nonce = useNonce()
-	const user = useOptionalUser()
 	const theme = useTheme()
-	const matches = useMatches()
-	const isOnSearchPage = matches.find(m => m.id === 'routes/users+/index')
-	const searchBar = isOnSearchPage ? null : <SearchBar status="idle" />
 
 	return (
 		<Document nonce={nonce} theme={theme} env={data.ENV}>
 			<div className="flex h-screen flex-col justify-between">
-				<header className="container py-6">
-					<nav>
-						<div className="flex flex-wrap items-center justify-between gap-4 sm:flex-nowrap md:gap-8">
-							<Link to="/">
-								<div className="font-light">epic</div>
-								<div className="font-bold">notes</div>
-							</Link>
-							<div className="ml-auto hidden max-w-sm flex-1 sm:block">
-								{searchBar}
-							</div>
-							<div className="flex items-center gap-10">
-								{user ? (
-									<UserDropdown />
-								) : (
-									<Button asChild variant="default" size="sm">
-										<Link to="/login">Log In</Link>
-									</Button>
-								)}
-							</div>
-							<div className="block w-full sm:hidden">{searchBar}</div>
-						</div>
-					</nav>
+				<header className="">
+					<div className="absolute left-[300px] top-[-52px] h-96 w-32 origin-top-left rotate-[87.11deg] rounded-full bg-gradient-to-b from-blue-800 via-rose-300 to-orange-300 opacity-70 blur-3xl" />
+					<MenuBar />
 				</header>
 
 				<div className="flex-1">
@@ -317,67 +278,6 @@ function AppWithProviders() {
 }
 
 export default withSentry(AppWithProviders)
-
-function UserDropdown() {
-	const user = useUser()
-	const submit = useSubmit()
-	const formRef = useRef<HTMLFormElement>(null)
-	return (
-		<DropdownMenu>
-			<DropdownMenuTrigger asChild>
-				<Button asChild variant="secondary">
-					<Link
-						to={`/users/${user.username}`}
-						// this is for progressive enhancement
-						onClick={e => e.preventDefault()}
-						className="flex items-center gap-2"
-					>
-						<img
-							className="h-8 w-8 rounded-full object-cover"
-							alt={user.name ?? user.username}
-							src={getUserImgSrc(user.image?.id)}
-						/>
-						<span className="text-body-sm font-bold">
-							{user.name ?? user.username}
-						</span>
-					</Link>
-				</Button>
-			</DropdownMenuTrigger>
-			<DropdownMenuPortal>
-				<DropdownMenuContent sideOffset={8} align="start">
-					<DropdownMenuItem asChild>
-						<Link prefetch="intent" to={`/users/${user.username}`}>
-							<Icon className="text-body-md" name="avatar">
-								Profile
-							</Icon>
-						</Link>
-					</DropdownMenuItem>
-					<DropdownMenuItem asChild>
-						<Link prefetch="intent" to={`/users/${user.username}/notes`}>
-							<Icon className="text-body-md" name="pencil-2">
-								Notes
-							</Icon>
-						</Link>
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						asChild
-						// this prevents the menu from closing before the form submission is completed
-						onSelect={event => {
-							event.preventDefault()
-							submit(formRef.current)
-						}}
-					>
-						<Form action="/logout" method="POST" ref={formRef}>
-							<Icon className="text-body-md" name="exit">
-								<button type="submit">Logout</button>
-							</Icon>
-						</Form>
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenuPortal>
-		</DropdownMenu>
-	)
-}
 
 /**
  * @returns the user's theme preference, or the client hint theme if the user

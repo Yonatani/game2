@@ -90,4 +90,9 @@ export const extendedTheme = {
 		/** 12px size / 16px high / bold */
 		button: ['0.75rem', { lineHeight: '1rem', fontWeight: '700' }],
 	},
+	/** Yonatan addons */
+	boxShadow: {
+		'top-bar': '0px 16px 36px rgba(124, 124, 136, 0.10)',
+		'dark:top-bar': '0px 16px 36px rgba(255, 255, 255, 0.10)', // lighter color for dark mode
+	},
 } satisfies Config['theme']
